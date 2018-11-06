@@ -1,0 +1,429 @@
+//Работаем с морским боем
+#include <iostream>
+#include <conio.h>
+#include <clocale> 
+#include <stdlib.h> // поддержка функции очистки экрана system("cls")
+#include <ctime> //подключили системное время
+
+using namespace std;
+
+//направления горизонтално вертикально
+enum direction{h,v};
+//создадим класс игрок
+class player
+{
+public:
+	bool defeat_flag;
+	int hits[10][10];
+	int ships[10][10];
+
+	player(): defeat_flag(0)  //собрали конструктор класса и задали начальное значение переменной
+	{}
+
+	void ships_init();
+	void set(int deck);//метод класса player устанавливает один корабль на поле
+	int place_ship(int s, int c, direction dir, int deck);
+	void turn(player&, int character, int digit);
+	void turn(player&);
+};
+//сонстанты
+const int s = 13; 
+const int c = 28;
+//карта
+char map [s][c] = {
+	"  0123456789    0123456789 ",
+	" #----------#  #----------#",
+	"0|          | 0|          |",
+	"1|          | 1|          |",
+	"2|          | 2|          |",
+	"3|          | 3|          |",
+	"4|          | 4|          |",
+	"5|          | 5|          |",
+	"6|          | 6|          |",
+	"7|          | 7|          |",
+	"8|          | 8|          |",
+	"9|          | 9|          |",
+	" #----------#  #----------#",
+};
+//создаем игроков
+player human;
+player computer;
+//функции (объявления)
+void map_init(char map[s][c]); //инициализация карты
+void map_paint(char map[s][c]); //вывод карты на экран каждый цикл
+int input(char&, char&);
+void test();
+int check_ending();
+char numbers[10] = { '0','1','2','3','4','5','6','7','8','9'};
+
+int main()
+{
+	setlocale (LC_CTYPE,"Russian"); 
+	int message = 0;
+	//установка генератора случайных чисел
+	srand(static_cast<unsigned int>(time(NULL)));
+	//расстановка кораблей
+	human.ships_init();
+	computer.ships_init();
+	// инициализация массива карты
+	map_init(map);
+
+	while (message != 2) 
+	{
+		system("cls"); // вызов функции очистки экрана
+		int user_input = 0;
+		//отрисовка карты
+		map_paint(map);
+		//test();
+		if (message == 1) // код сообщения 1 - введено неверное значение
+		cout << "Вы ввели неверное значение!\n";
+		message = 0;
+		
+		char character, digit;
+		user_input = input(character, digit);
+		if (user_input == 1)
+		{
+			message = 1;
+			continue;
+		}
+		human.turn(computer,character, digit);
+		computer.turn(human);
+		message = check_ending();
+	}
+
+	cout << "Выход из программы. Нажмите что-нибудь...\n";
+	_getch();
+	return 0;
+}
+// инициализация карты
+void map_init(char map[s][c])//передача в карту символов кораблей игрока
+{
+	for (int i=0; i<10; i++)
+	{
+		for (int j=0; j<10; j++)
+		{
+			if (human.ships[i][j] == 2)
+				map[i+2][j+2] = 'K';
+		}
+	}
+}
+//инициализация игровых полей
+void player::ships_init()
+{
+	for (int i=0; i<10; i++)
+	{
+		for (int j=0; j<10; j++)
+		{
+			hits[i][j] = 0;
+			ships[i][j] = 1;
+		}
+	}
+	set(4);
+	set(3);
+	set(3);
+	set(2);
+	set(2);
+	set(2);
+	set(1);
+	set(1);
+	set(1);
+	set(1);
+}
+//установка кораблей
+void player::set(int deck)
+{
+	 int my = deck - 1;
+	 bool isset = 0;
+	 int s,c;
+	 direction dir;
+	 while (isset == 0) //проверка - удалось ли разместить когабль
+	 {
+		 dir = static_cast<direction>(rand()%2);//выбераем направление
+		 s = rand()%10;//выбираем случайным образом координаты
+		 c = rand()%10;
+		 int e = 0;
+		 switch (dir)
+		 {
+		 case h:
+			 if (ships[s][c+deck-1] == 1)
+			 {
+				 e = place_ship(s,c,dir,deck);
+				 if (e == 0)
+				 {
+					 for (int i=0; i<deck; i++)
+					 {
+						 ships[s][c+i] = 2;
+					 }
+					 isset = 1;
+				 }
+			 }
+			 break;
+		 case v:
+			 if (ships[s+deck-1][c] == 1)
+			 {
+				 e = place_ship(s,c,dir,deck);
+				 if (e == 0)
+				 {
+					 for (int i=0; i<deck; i++)
+					 {
+						 ships[s+i][c] = 2;
+					 }
+					 isset = 1;
+				 }
+			 }
+			 break;
+		 }//конец switch
+	 }//конец while
+}//конец set
+//проверка места перед размещением корабля
+int player::place_ship(int s, int c, direction dir, int deck)
+{
+	int e = 0;
+	switch (dir)
+	{
+	case h:
+		if (ships[s-1][c-1] == 2)//проверка верхнего левого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s-1][c+deck] == 2)//проверка верхнего правого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s+1][c-1] == 2)//проверка нижнего левого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s+1][c+deck] == 2)//проверка нижнего правого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s][c-1] == 2)//проверка левой стороны на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s][c+deck] == 2)//проверка правой стороны на наличие другого корабля
+		{
+			e = 1;
+		}
+		for (int i=0; i<deck; i++)
+		{
+			if (ships[s-1][c+i] == 2)//проверка верхней стороны на наличие другого корабля
+			{
+				e = 1;
+			}
+		}
+		for (int i=0; i<deck; i++)
+		{
+			if (ships[s+1][c+i] == 2)//проверка нижней стороны на наличие другого корабля
+			{
+				e = 1;
+			}
+		}
+		break;
+	case v:
+		if (ships[s-1][c-1] == 2)//проверка верхнего левого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s-1][c+1] == 2)//проверка верхнего правого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s+deck][c-1] == 2)//проверка нижнего левого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s+deck][c+1] == 2)//проверка нижнего правого угла на наличие другого корабля
+		{
+			e = 1;
+		}
+		for (int i=0; i<deck; i++)
+		{
+			if (ships[s+deck][c-1] == 2)//проверка левой стороны на наличие другого корабля
+			{
+				e = 1;
+			}
+		}
+		for (int i=0; i<deck; i++)
+		{
+			if (ships[s+deck][c+1] == 2)//проверка правой стороны на наличие другого корабля
+			{
+				e = 1;
+			}
+		}
+		if (ships[s-1][c] == 2)//проверка верхней стороны на наличие другого корабля
+		{
+			e = 1;
+		}
+		if (ships[s+deck][c] == 2)//проверка нижней стороны на наличие другого корабля
+		{
+			e = 1;
+		}
+		break;
+	}//конец switch
+	return e;
+}
+//вывод карты на экран
+void map_paint(char map[s][c])
+{
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			/* Заполняем поле игрока */
+			if (computer.hits[i][j] == 1 && human.ships[i][j] == 3)
+			{
+				map[i+2][j+2] = 'Х';
+			}
+			else if (computer.hits[i][j] == 1 && human.ships[i][j] != 3)
+			{
+				map[i+2][j+2] = 'o';
+			}
+
+			/* Заполняем поле компьютера */
+			if (computer.ships[i][j] == 3 && human.hits[i][j] == 1)
+			{
+				map[i+2][j+2+14] = 'Х';
+			}
+			else if (computer.ships[i][j] != 3 && human.hits[i][j] == 1)
+			{
+				map[i+2][j+2+14] = 'o';
+			}
+		}
+		//cout << "\n";
+	}
+	//cout << "\n";
+	for (int i = 0; i < 13; i++)
+	{
+		for (int j = 0; j < 28; j++)
+		{
+			cout << map[i][j];
+		}
+		cout << "\n";
+	}
+	cout << "\n";
+}
+// ввод координат
+int input(char& character, char& digit)
+{
+	character = _getche(); // ввод "горизонтальной" координаты
+	int match = 0;
+	for (int i = 0; i < 10; i++)
+		if (numbers[i] == character)
+		{
+			match = 1;
+			character = i;
+		}
+		if (match == 0)	
+			return 1;
+	std::cout << '-';
+	match = 0;
+	digit = _getche(); // ввод "вертикальной" координаты
+	for (int i = 0; i < 10; i++)
+		if (numbers[i] == digit)
+		{
+			match = 1;
+			digit = i;
+		}
+		if (match == 0)
+			return 1;
+	return 0;	
+}
+//тестовая функция
+void test()
+{
+	std::cout << std::endl;
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			std::cout << human.hits[i][j];
+		}
+		std::cout << "  ";
+		for (int j = 0; j < 10; j++)
+		{
+			std::cout << computer.hits[i][j];
+		}
+		std::cout << std::endl;
+	}
+	std::cout << std::endl;
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			std::cout << human.ships[i][j];
+		}
+		std::cout << "  ";
+		for (int j = 0; j < 10; j++)
+		{
+			std::cout << computer.ships[i][j];
+		}
+		std::cout << std::endl;
+	}
+}
+//ход компьютера: вносим изменения в human.ships и computer.hits
+void player::turn(player& enemy)
+{
+	bool flag = 0;
+	while (flag == 0)
+	{
+		int character = rand()%10;//случайный выбор координат
+		int digit = rand()%10;	 //для выстрела
+		if (hits[character][digit] != 1)
+		{
+			hits[character][digit] = 1;
+			
+			hits[character+1][digit-1] = 1;
+			hits[character+1][digit+1] = 1;
+			hits[character-1][digit-1] = 1;
+			hits[character-1][digit+1] = 1;
+			
+			flag = 1;
+			if (enemy.ships[character][digit] == 2)
+			{
+				enemy.ships[character][digit] = 3;
+			}
+		}
+	}//конец while
+}
+//ход игрока: вносим изменения в computer.ships и human.hits
+void player::turn(player& enemy, int character, int digit)
+{
+	hits[character][digit] = 1;
+	if (enemy.ships[character][digit] == 2)
+	{
+		enemy.ships[character][digit] = 3;
+	}
+}
+// В функции устанавливаются и проверяются флаги defeat_flag игроков.
+int check_ending()
+{
+	int flag = 0;
+	int human_flag = 0;
+	int computer_flag = 0;
+	for (int i=0; i<10;i++)
+	{
+		for (int j=0; j<10;j++)
+		{
+			if (human.ships[i][j] == 2)
+				human_flag = 1; // у пользователя ещё остались неповреждённые корабли
+			if (computer.ships[i][j] == 2)
+				computer_flag = 1; // у компьютера ещё остались неповреждённые корабли
+		}
+	}
+	if (human_flag == 0)
+		flag = 2;
+	if (computer_flag == 0)
+		flag = 1;
+	if (flag == 1)
+	{
+		std::cout << "Победил игрок!\n";
+		return 2;
+	}
+	if (flag == 2)
+	{
+		std::cout << "Победил компьютер!\n";
+		return 2;
+	}
+}

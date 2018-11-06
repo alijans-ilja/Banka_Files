@@ -1,0 +1,293 @@
+//Псевдоигра. Здесь окончательный вариант с открытым кодом второго типа ветвления
+//Программа имитирует игру танки. Есть склад с топливом в центре карты. есть "танк" игрока
+//Есть условный противник, который в случае потери всего топлив респавнится в произвольном месте карты.
+
+#include <iostream>
+#include <conio.h>
+#include <clocale> 
+#include <stdlib.h> // поддержка функции очистки экрана system("cls")
+
+using namespace std;
+
+//глобальная область видимости
+
+struct tank //описание танка
+{
+	int x,y;
+	int fuel;
+	char symbol;
+};
+
+struct sklad // описание склада
+{
+	int fuel;
+	char symbol;
+};
+
+enum cardinal_dirs { north = 72, west = 75, east = 77, south = 80 };
+
+tank t34 = {1,1,20,'T'};
+tank pz4 = {7,8,20,'A'};
+
+sklad basa = {100, 'C'};
+
+const int s = 15; 
+const int c = 20;
+int ch;
+int mesaga = 0; //переменная, хранящая код сообщения, выводящегося на экран
+char map[s][c]; // массив для хранения игровой карты
+char act;
+char etalon = ' ';
+//char sklad = 'C';
+bool brk = 1; //переменная логического типа для прерывания основного цикла
+int kol_hod = 0; //счетчик количества ходов
+int strng, clmn; //переменные для обрамления крты МОД
+
+void map_init(); //инициализация карты
+void map_paint(); //вывод карты на экран каждый цикл
+void move(tank&, cardinal_dirs);
+void ai(tank&);
+bool action(tank&);
+void gasolina(tank&, sklad&);
+int summator(); //суммирует ходы игрока
+
+int main()
+{
+	setlocale (LC_CTYPE,"Russian");
+	
+	map_init();
+	map_paint();
+	
+	while (brk)
+	{
+		brk = action(t34);
+
+		if (t34.fuel == 0)
+		{
+			brk = 0;
+			cout << "Топливо закончилось. Конец игры.\n";
+		}
+
+		ai(pz4);
+	}
+	
+	cout << "\n";
+	cout << "Было совершено " << kol_hod << " ходов(-а)" << "\n";
+
+	cout << "Выход из программы. Нажмите что-нибудь...\n";
+	_getch();
+	return 0;
+}
+
+void move(tank& t, cardinal_dirs ch)
+{
+	int x = t.x;
+	int y = t.y;
+	char smbl = t.symbol;
+	if (ch == west)
+		{
+			// код для передвижения персонажа влево
+			if (map[x][y-1] == etalon)
+			{
+				map[x][y] = ' ';
+				y--;
+				map[x][y] = smbl;
+				t.fuel -= 1;
+				kol_hod = summator();
+			}
+			else if (map[x][y-1] == basa.symbol)
+			{
+			gasolina(t, basa);
+			}
+		}
+	else if (ch == east)
+		{
+			// код для передвижения персонажа вправо
+			if (map[x][y+1] == etalon)
+			{
+				map[x][y] = ' ';
+				y++;
+				map[x][y] = smbl;
+				t.fuel -= 1;
+				kol_hod = summator();
+			}
+			else if (map[x][y+1] == basa.symbol)
+			{
+			gasolina(t, basa);
+			}
+		}
+	else if (ch == north)
+		{
+			// код для передвижения персонажа вверх
+			if (map[x-1][y] == etalon)
+			{
+				map[x][y] = ' ';
+				x--;
+				map[x][y] = smbl;
+				t.fuel -= 1;
+				kol_hod = summator();
+			}
+			else if (map[x-1][y] == basa.symbol)
+			{
+			gasolina(t, basa);
+			}
+		}
+	else if (ch == south)
+		{
+			// код для передвижения персонажа вниз
+			if (map[x+1][y] == etalon)
+			{
+				map[x][y] = ' ';
+				x++;
+				map[x][y] = smbl;
+				t.fuel -= 1;
+				kol_hod = summator();
+			}
+			else if (map[x+1][y] == basa.symbol)
+			{
+			gasolina(t, basa);
+			}
+		}
+	map_paint();
+
+	t.x = x;
+	t.y = y;
+}
+
+bool action(tank& t)
+{
+	act = _getch();
+	ch = static_cast<int>(act);
+	  
+	if (ch == 75 || ch == 77 || ch ==72 || ch == 80)
+	{
+		move(t, static_cast<cardinal_dirs>(ch));
+	}
+
+	if (ch == -32)
+	{
+		action(t34);
+	}
+	if ( ch == 27)
+	{
+		brk = 0;
+	}
+	return brk;
+}
+
+int summator()
+{
+	static int kol_hod = 0;
+	kol_hod = kol_hod + 1;
+	return kol_hod;
+}
+
+void map_init()
+{
+// инициализация массива
+	for (int i = 0; i < 15; i++)
+	{
+		for (int j = 0; j < 20; j++)
+		{
+			map[i][j] = ' ';
+		}
+	}
+//вывод объектов
+	map[1][1] = t34.symbol;
+	map[7][8] = pz4.symbol;
+	map[7][9] = basa.symbol;
+//вывод декораций: обрамление игрового поля		
+	map[0][0] = '#';
+	map[14][0] = '#';
+	map[0][19] = '#';
+	map[14][19] = '#';
+//рисуем горизонтальные границы
+	strng = 0;
+	for (clmn = 1; clmn < 19; clmn++)
+	{
+		map[strng][clmn] = '-';
+		map[strng+14][clmn] = '-';
+	}
+//рисуем вертикальные границы
+	clmn = 0;
+	for (strng = 1; strng < 14; strng++)
+	{
+		map[strng][clmn] = '|';
+		map[strng][clmn+19] = '|';
+	}
+}
+
+void map_paint()
+{
+	system("cls");
+	for (int i = 0; i < 15; i++) //вывод карты на экран
+	{
+		for (int j = 0; j < 20; j++)
+		{
+			cout << map[i][j];
+		}
+		cout << "\n";
+	}
+	cout << "\n";
+	cout << "Запас хода t34 " << t34.fuel << " ед" << "\n";
+	cout << "Запас хода pz4 " << pz4.fuel << " ед" << "\n";
+	cout << "Запас топлива " << basa.fuel << " ед" << "\n";
+}
+
+void ai(tank& t)
+{
+	int rnd;
+	cardinal_dirs dir;
+
+	rnd = rand()%4;
+
+	switch (rnd)
+	{
+		case 0:
+			dir = north;
+			break;
+
+		case 1:
+			dir = south;
+			break;
+
+		case 2:
+			dir = west;
+			break;
+
+		case 3:
+			dir = east;
+			break;
+	}
+
+	if (pz4.fuel > 0)
+	{
+		move(t, dir);
+	}
+	else
+	{
+		map[pz4.x][pz4.y] = etalon;
+		pz4.x = 13;
+		pz4.y = 17;
+		pz4.fuel = 20;
+		map[pz4.x][pz4.y] = pz4.symbol;
+	}
+}
+
+void gasolina(tank& t, sklad& basa)
+{
+	if (basa.fuel > 0)
+	{
+		int d = 20 - t.fuel;
+		if (basa.fuel > d)
+		{
+			t.fuel = 20;
+			basa.fuel = basa.fuel - d;
+		}
+		else
+		{
+			t.fuel = t.fuel + basa.fuel;
+			basa.fuel = 0;
+		}
+	}
+}
